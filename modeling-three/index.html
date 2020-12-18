@@ -1,0 +1,43 @@
+<style>body { margin: 0; }</style>
+<script type="module">
+import {
+	WebGLRenderer, HemisphereLight, PerspectiveCamera, Scene,
+	BoxGeometry, MeshPhongMaterial, Mesh, TextureLoader,
+} from 'https://unpkg.com/three@0.123.0/build/three.module.js'
+import { OrbitControls } from 'https://unpkg.com/three@0.123.0/examples/jsm/controls/OrbitControls.js'
+
+let scene, camera, light, renderer, controls
+init()
+
+function init() {
+	scene = new Scene()
+	camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000)
+	camera.position.z = 2
+	
+	light = new HemisphereLight( 0xffffff, 0x000000, 1 )
+	scene.add( light )
+	
+	renderer = new WebGLRenderer({ antialias: true })
+	renderer.setPixelRatio( window.devicePixelRatio )
+	renderer.setSize(window.innerWidth, window.innerHeight)
+	document.body.appendChild(renderer.domElement)
+
+	controls = new OrbitControls(camera, renderer.domElement)
+
+	addModel()
+	run()
+}
+
+function addModel() {
+	const geometry = new BoxGeometry()
+	const material = new MeshPhongMaterial()
+	const mesh = new Mesh(geometry, material)
+	scene.add(mesh)
+}
+
+function run() {
+	controls.update()
+	renderer.render(scene, camera)
+	requestAnimationFrame(run)
+}
+</script>

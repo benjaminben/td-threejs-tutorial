@@ -1,0 +1,62 @@
+<style>body {margin: 0}</style>
+<script type="module">
+import {
+	PerspectiveCamera, Scene, WebGLRenderer,
+	InstancedMesh, BoxGeometry, MeshPhongMaterial, Matrix4, Vector3, HemisphereLight
+} from 'https://unpkg.com/three@0.123.0/build/three.module.js'
+import { OrbitControls } from 'https://unpkg.com/three@0.123.0/examples/jsm/controls/OrbitControls.js'
+
+const updateTasks = {}
+let scene, camera, light, renderer, controls
+
+init()
+
+function init() {
+	scene = new Scene()
+	camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000)
+	camera.position.z = 1
+	
+	renderer = new WebGLRenderer({ antialias: true })
+	renderer.setPixelRatio( window.devicePixelRatio )
+	renderer.setSize(window.innerWidth, window.innerHeight)
+	document.body.appendChild(renderer.domElement)
+	postUpdate('renderer', () => renderer.render(scene, camera))
+			
+	light = new HemisphereLight( 0xffffff, 0x000000, 1 )
+	scene.add( light );
+
+	controls = new OrbitControls(camera, renderer.domElement)
+	postUpdate(controls.uuid, controls.update)
+	fetchScene()
+
+	run()
+}
+
+function fetchScene() {
+	fetch("/_assets/instances.json").then(r => r.json()).then(instanceData => {
+		let geometry = new BoxGeometry(0.1, 0.1, 0.1)
+		let material = new MeshPhongMaterial()
+		let mesh = new InstancedMesh(geometry, material, instanceData.length)
+		
+		let matrix = new Matrix4() // init matrix to assign transforms from
+		for (let i = 0; i < instanceData.length; i++) {
+			let inst = instanceData[i]
+			let pos = new Vector3(inst["tx"], inst["ty"], inst["tz"])
+			matrix.setPosition(pos)
+			mesh.setMatrixAt(i, matrix)
+		}
+
+		scene.add(mesh)
+		camera.position.z = 5
+	})   
+}
+
+function run() {
+	for (let key in updateTasks) { updateTasks[key]() }
+	requestAnimationFrame(run);
+}
+
+function postUpdate(uuid, task) {
+	updateTasks[uuid] = task // Each task runs every frame
+}
+</script>

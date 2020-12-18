@@ -1,0 +1,79 @@
+<style>body {margin: 0}</style>
+
+<script type="module">
+import {
+	PerspectiveCamera, Material, Texture, Scene, WebGLRenderer,  ShaderMaterial, ObjectLoader,
+	InstancedMesh, BoxGeometry, MeshBasicMaterial, Mesh, Matrix4, Vector3, HemisphereLight
+} from 'https://unpkg.com/three@0.123.0/build/three.module.js'
+import { OrbitControls } from 'https://unpkg.com/three@0.123.0/examples/jsm/controls/OrbitControls.js'
+import { FBXLoader } from 'https://unpkg.com/three@0.123.0/examples/jsm/loaders/FBXLoader.js'
+
+const updateTasks = {}
+let scene, camera, renderer, controls
+
+init()
+
+function init() {
+	scene = new Scene()
+	camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000)
+	camera.position.z = 1
+	
+	renderer = new WebGLRenderer({ antialias: true })
+	renderer.setPixelRatio( window.devicePixelRatio )
+	renderer.setSize(window.innerWidth, window.innerHeight)
+	document.body.appendChild(renderer.domElement)
+	postUpdate('renderer', () => renderer.render(scene, camera))
+	
+	controls = new OrbitControls(camera, renderer.domElement)
+	postUpdate(controls.uuid, controls.update)
+	fetchScene()
+
+	run()
+}
+
+function fetchScene() {
+	fetch("/_assets/instances.json").then(r => r.json()).then(async instanceData => {
+		let geometry = await (() => new Promise(resolve => {
+				new ObjectLoader().load('/_assets/model.json', mesh => {
+					resolve(mesh.geometry)
+				})
+		}))()
+		let material = new ShaderMaterial({
+			uniforms: { uTime: { value: 0 } },
+			vertexShader: `
+				uniform float uTime;
+				flat out int vID;
+				void main() {
+					vID = gl_InstanceID;
+					vec3 pos = position + vec3(sin(uTime+float(gl_InstanceID)), 0., 0.);
+					gl_Position = projectionMatrix * viewMatrix * modelMatrix * instanceMatrix * vec4( pos, 1.0 );
+				}`,
+			fragmentShader: `
+				uniform float uTime;
+				flat in int vID;
+				void main() { gl_FragColor = vec4(sin(uTime+float(vID)),1.,1.,1.); }`,
+		})
+		let mesh = new InstancedMesh(geometry, material, instanceData.length)
+		
+		let matrix = new Matrix4() // init matrix to assign transforms from
+		for (let i = 0; i < instanceData.length; i++) {
+			let inst = instanceData[i]
+			let pos = new Vector3(inst["tx"], inst["ty"], inst["tz"])
+			matrix.setPosition(pos)
+			mesh.setMatrixAt(i, matrix)
+		}
+
+		postUpdate(material.uuid, () => material.uniforms.uTime.value += 0.0167)
+		scene.add(mesh)
+	})
+}
+
+function postUpdate(uuid, task) {
+	updateTasks[uuid] = task // Each task runs every frame
+}
+
+function run() {
+	for (let key in updateTasks) { updateTasks[key]() }
+	requestAnimationFrame(run)
+}
+</script>
