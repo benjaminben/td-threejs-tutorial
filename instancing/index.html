@@ -20,6 +20,11 @@ function init() {
 	renderer.setPixelRatio( window.devicePixelRatio )
 	renderer.setSize(window.innerWidth, window.innerHeight)
 	document.body.appendChild(renderer.domElement)
+	window.addEventListener('resize', () => {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight)
+	})
 	postUpdate('renderer', () => renderer.render(scene, camera))
 			
 	light = new HemisphereLight( 0xffffff, 0x000000, 1 )
@@ -27,12 +32,12 @@ function init() {
 
 	controls = new OrbitControls(camera, renderer.domElement)
 	postUpdate(controls.uuid, controls.update)
-	fetchScene()
+	addModel()
 
 	run()
 }
 
-function fetchScene() {
+function addModel() {
 	fetch("/_assets/instances.json").then(r => r.json()).then(instanceData => {
 		let geometry = new BoxGeometry(0.1, 0.1, 0.1)
 		let material = new MeshPhongMaterial()
