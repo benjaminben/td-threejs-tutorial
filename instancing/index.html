@@ -23,7 +23,7 @@ function init() {
 	postUpdate('renderer', () => renderer.render(scene, camera))
 			
 	light = new HemisphereLight( 0xffffff, 0x000000, 1 )
-	scene.add( light );
+	scene.add( light )
 
 	controls = new OrbitControls(camera, renderer.domElement)
 	postUpdate(controls.uuid, controls.update)

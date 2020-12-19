@@ -1,15 +1,14 @@
 <style>body {margin: 0}</style>
-
 <script type="module">
 import {
 	PerspectiveCamera, Material, Texture, Scene, WebGLRenderer,  ShaderMaterial, ObjectLoader,
-	InstancedMesh, BoxGeometry, MeshBasicMaterial, Mesh, Matrix4, Vector3, HemisphereLight
+	InstancedMesh, BoxGeometry, MeshBasicMaterial, Mesh, Matrix4, Vector3, HemisphereLight,
+	UniformsUtils, UniformsLib, DirectionalLight, PointLight
 } from 'https://unpkg.com/three@0.123.0/build/three.module.js'
 import { OrbitControls } from 'https://unpkg.com/three@0.123.0/examples/jsm/controls/OrbitControls.js'
-import { FBXLoader } from 'https://unpkg.com/three@0.123.0/examples/jsm/loaders/FBXLoader.js'
 
 const updateTasks = {}
-let scene, camera, renderer, controls
+let scene, camera, renderer, controls, light1, light2, light
 
 init()
 
@@ -17,11 +16,23 @@ function init() {
 	scene = new Scene()
 	camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000)
 	camera.position.z = 1
+
+	light = new HemisphereLight( 0xffffff, 0x000000, 1 )
+	light1 = new PointLight( 0xffffff, 1 )
+	light2 = new DirectionalLight( 0xffffff, 1 )
+	scene.add( light )
+	scene.add( light1 )
+	scene.add( light2 )
 	
 	renderer = new WebGLRenderer({ antialias: true })
 	renderer.setPixelRatio( window.devicePixelRatio )
 	renderer.setSize(window.innerWidth, window.innerHeight)
 	document.body.appendChild(renderer.domElement)
+	window.addEventListener('resize', () => {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight)
+	})
 	postUpdate('renderer', () => renderer.render(scene, camera))
 	
 	controls = new OrbitControls(camera, renderer.domElement)
@@ -33,29 +44,51 @@ function init() {
 
 function fetchScene() {
 	fetch("/_assets/instances.json").then(r => r.json()).then(async instanceData => {
-		let geometry = await (() => new Promise(resolve => {
+		let [geometry, texture] = await (() => new Promise(resolve => {
 				new ObjectLoader().load('/_assets/model.json', mesh => {
-					resolve(mesh.geometry)
+					resolve([mesh.geometry, mesh.material.map])
 				})
 		}))()
 		let material = new ShaderMaterial({
-			uniforms: { uTime: { value: 0 } },
+			lights: true,
+			uniforms: UniformsUtils.merge([
+				{ pointLights: UniformsLib['lights']['pointLights'] },
+				{ uTime: { type: 'f', value: 0 }, uTexture: { type: 't', value: null } } ]),
 			vertexShader: `
 				uniform float uTime;
-				flat out int vID;
+				out vec2 vUV;
 				void main() {
-					vID = gl_InstanceID;
+					vUV = uv;
 					vec3 pos = position + vec3(sin(uTime+float(gl_InstanceID)), 0., 0.);
 					gl_Position = projectionMatrix * viewMatrix * modelMatrix * instanceMatrix * vec4( pos, 1.0 );
 				}`,
 			fragmentShader: `
 				uniform float uTime;
-				flat in int vID;
-				void main() { gl_FragColor = vec4(sin(uTime+float(vID)),1.,1.,1.); }`,
+				uniform sampler2D uTexture;
+				#if NUM_POINT_LIGHTS > 0
+					struct PointLight {
+						vec3 direction;
+						vec3 color;
+						int shadow;
+						float shadowBias;
+						float shadowRadius;
+						vec2 shadowMapSize;
+					};
+					uniform PointLight pointLights[ NUM_POINT_LIGHTS ];
+				#endif
+				in vec2 vUV;
+				void main() {
+					vec4 color = texture(uTexture, vUV);
+					#if NUM_POINT_LIGHTS > 0
+						color.rgb *= pointLights[0].color;
+					#endif
+					gl_FragColor = color;
+				}`,
 		})
+		material.uniforms.uTexture.value = texture;
 		let mesh = new InstancedMesh(geometry, material, instanceData.length)
 		
-		let matrix = new Matrix4() // init matrix to assign transforms from
+		let matrix = new Matrix4() // init matrix to assign transforms
 		for (let i = 0; i < instanceData.length; i++) {
 			let inst = instanceData[i]
 			let pos = new Vector3(inst["tx"], inst["ty"], inst["tz"])
