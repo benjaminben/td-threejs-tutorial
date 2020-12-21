@@ -7,7 +7,7 @@ This tutorial aims to demonstrate, along with basic concepts of TouchDesigner an
 - Initialize web server from root, e.g `npx serve .` or `python -m http.server`
 
 ## Walkthrough
-- Video walkthrough coming soon
+[![Enhanced Web Workflows with TouchDesigner + three.js](https://img.youtube.com/vi/lCyILpkPQ4g/0.jpg)](https://www.youtube.com/watch?v=lCyILpkPQ4g)
 
 ## Additional Resources
 - [The Book of Shaders](http://thebookofshaders.com/)
