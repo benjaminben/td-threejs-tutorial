@@ -1,6 +1,6 @@
 # TouchDesigner <> three.js Integrated Workflow
 
-This tutorial aims to demonstrate, along with basic concepts of TouchDesigner and three.js, how both technologies can coexist in any 3D web application development pipeline.
+This tutorial aims to demonstrate, along with basic concepts of TouchDesigner and three.js, how both technologies can coexist in any 3D web application development pipeline. In particular, we examine how TD can speed up our dev cycle by providing a GUI to edit and export complex geometry.
 
 ## Installation
 - Install the latest build of [TouchDesigner](https://derivative.ca/)
